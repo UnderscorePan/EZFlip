@@ -44,7 +44,7 @@ def add_card(conn, set_id, word, definition):
     cursor = conn.cursor()
 
     # sql query for insert
-    cursor.connect('''
+    cursor.execute('''
         INSERT INTO flashcards (set_id, word, definition)
         VALUES(?, ?, ?)
     ''', (set_id, word, definition))
@@ -109,7 +109,7 @@ def create_set():
         if set_name not in get_sets(conn):
             set_id = add_set(conn, set_name)
             populate_sets_combobox()
-            set_name_var('')
+            set_name_var.set('')
 
             # Clear input fields
             set_name_var.set('')
@@ -281,7 +281,7 @@ if __name__ == '__main__':
 
     # del and add button
     ttk.Button(select_set_frame, text='Select Set', command=select_set).pack(padx=5, pady=5)
-    ttk.Button(select_set_frame, text='Delete Set', command=delete_set).pack(padx=5, pady=5)
+    ttk.Button(select_set_frame, text='Delete Set', command=delete_selected_set).pack(padx=5, pady=5)
 
     # learn mode tab
     flashcards_frame = ttk.Frame(notebook)
