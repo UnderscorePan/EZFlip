@@ -3,4 +3,7 @@
   <component name="ProjectRootManager" version="2" languageLevel="JDK_19" project-jdk-name="Python 3.11 (FYPFlashcard)" project-jdk-type="Python SDK">
     <output url="file://$PROJECT_DIR$/out" />
   </component>
+  <component name="SQLPlugin.ProjectConfiguration">
+    <queries />
+  </component>
 </project>
