@@ -89,6 +89,7 @@ def add_card(conn, set_id, word, definition, image_path=None, video_path=None):
     ''', (set_id, word, definition, image_path, video_path))
     card_id = cursor.lastrowid
     conn.commit()
+    print(f"Added card with video_path: {video_path}")  # Debug statement
     return card_id
 
 # Function to retrieve all sets from database
@@ -110,6 +111,8 @@ def get_cards(conn, set_id):
     ''', (set_id,))
     rows = cursor.fetchall()
     cards = [(row[0], row[1], row[2] if row[2] else '', row[3] if row[3] else '') for row in rows]
+    for card in cards:
+        print(f"Retrieved card with video_path: {card[3]}")  # Debug statement
     return cards
 
 # Function to delete set from database
@@ -282,12 +285,17 @@ def play_video(video_path):
         else:
             break
     cap.release()
+    print("Video playback ended")  # Debug statement
+
+
 
 def start_video(video_path):
     global playing_video, current_video_path
     playing_video = True
     current_video_path = video_path
     threading.Thread(target=play_video, args=(video_path,)).start()
+    print(f"Video started from path: {video_path}")  # Debug statement
+
 
 def stop_video():
     global playing_video
@@ -295,6 +303,8 @@ def stop_video():
     if audio_thread is not None:
         audio_thread.join()
     video_canvas.delete("all")
+    pygame.mixer.music.stop()
+    print("Video stopped")  # Debug statement
 
 
 def show_card():
@@ -319,10 +329,14 @@ def show_card():
                 image_label.config(image='')
                 image_label.image = None
 
+            # Stop the previous video before starting a new one
+            stop_video()
+
             if video_path:
+                print(f"Starting video from path: {video_path}")  # Debug statement
                 start_video(video_path)
             else:
-                stop_video()
+                print("No video path found")  # Debug statement
         else:
             clear_flashcard_display()
     else:
@@ -362,6 +376,7 @@ def browse_file(path_var, video=False):
     if file_path:
         absolute_path = os.path.abspath(file_path)
         path_var.set(absolute_path)
+
 
 if __name__ == '__main__':
     # Connect to sqlite database
@@ -459,10 +474,10 @@ if __name__ == '__main__':
     ttk.Button(flashcards_frame, text='Flip', command=flip_card).pack(side='left', padx=5, pady=5)
 
     # Next button
-    ttk.Button(flashcards_frame, text='Next', command=next_card).pack(side='left', padx=5, pady=5)
+    ttk.Button(flashcards_frame, text='Next', command=next_card).pack(side='right', padx=5, pady=5)
 
     # Previous button
-    ttk.Button(flashcards_frame, text='Previous', command=prev_card).pack(side='left', padx=5, pady=5)
+    ttk.Button(flashcards_frame, text='Previous', command=prev_card).pack(side='right', padx=5, pady=5)
 
     populate_sets_combobox()
 
