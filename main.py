@@ -8,7 +8,8 @@ from PIL import Image, ImageTk
 import cv2
 import ffmpeg
 import tempfile
-import pygame  # New import
+import pygame
+import time
 
 # Initialize Pygame mixer
 pygame.mixer.init()
@@ -279,23 +280,35 @@ def play_video(video_path):
     global playing_video, audio_thread
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
+    frame_time = 1 / fps  # Time per frame in seconds
 
-    # Start audio playback in a separate thread
+    # Start audio playback directly
     audio_thread = threading.Thread(target=play_audio, args=(video_path,))
     audio_thread.start()
 
+    start_time = time.time()
+
     while cap.isOpened() and playing_video:
         ret, frame = cap.read()
-        if ret:
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frame = cv2.resize(frame, (400, 300))
-            img = ImageTk.PhotoImage(Image.fromarray(frame))
-            video_canvas.create_image(0, 0, anchor=tk.NW, image=img)
-            video_canvas.image = img
-            video_canvas.update()
-            cv2.waitKey(int(1000 / fps))
-        else:
+        if not ret:
             break
+
+        # Calculate the exact time the frame should be displayed
+        current_time = time.time()
+        elapsed_time = current_time - start_time
+        expected_frame_number = int(elapsed_time * fps)
+        cap.set(cv2.CAP_PROP_POS_FRAMES, expected_frame_number)
+
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame = cv2.resize(frame, (400, 300))
+        img = ImageTk.PhotoImage(Image.fromarray(frame))
+        video_canvas.create_image(0, 0, anchor=tk.NW, image=img)
+        video_canvas.image = img
+        video_canvas.update()
+
+        # Sleep for the remaining time to maintain fps
+        time.sleep(max(0, frame_time - (time.time() - current_time)))
+
     cap.release()
     stop_audio()  # Ensure audio stops when video playback ends
     print("Video playback ended")  # Debug statement
