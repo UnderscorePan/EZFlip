@@ -42,6 +42,8 @@ def create_tables(conn):
                     )
     ''')
 
+    conn.commit()
+
 def update_table_schema(conn):
     cursor = conn.cursor()
     cursor.execute('PRAGMA foreign_keys = OFF;')
@@ -60,7 +62,7 @@ def update_table_schema(conn):
 
     cursor.execute('''
         INSERT INTO flashcards_new (id, set_id, word, definition, image_path, video_path)
-        SELECT id, set_id, word, definition, image_path, NULL FROM flashcards
+        SELECT id, set_id, word, definition, image_path, video_path FROM flashcards
     ''')
 
     cursor.execute('DROP TABLE flashcards')
@@ -164,7 +166,7 @@ def add_word():
         word_var.set('')
         definition_var.set('')
         image_path_var.set('')
-        video_path_var.set('')
+        video_path_var.set('')  # Ensure video_path is cleared after adding
         populate_sets_combobox()
     else:
         messagebox.showerror("Error", "Please fill in all fields.")
@@ -204,8 +206,16 @@ def select_set():
 
 def next_card():
     global card_index, current_cards
+    stop_video()  # Stop video before moving to next card
     if current_cards:
         card_index = min(card_index + 1, len(current_cards) - 1)
+        show_card()
+
+def prev_card():
+    global card_index, current_cards
+    stop_video()  # Stop video before moving to previous card
+    if current_cards:
+        card_index = max(card_index - 1, 0)
         show_card()
 
 def display_flashcards(cards):
@@ -260,8 +270,10 @@ def play_audio(video_path):
         if os.path.exists(audio_path):
             os.remove(audio_path)  # Remove the temporary audio file after playing
 
-playing_video = False  # Global flag to control video playback
-audio_thread = None    # Global variable to store the audio thread
+def stop_audio():
+    if pygame.mixer.music.get_busy():
+        pygame.mixer.music.stop()
+    print("Audio stopped")  # Debug statement
 
 def play_video(video_path):
     global playing_video, audio_thread
@@ -285,17 +297,8 @@ def play_video(video_path):
         else:
             break
     cap.release()
+    stop_audio()  # Ensure audio stops when video playback ends
     print("Video playback ended")  # Debug statement
-
-
-
-def start_video(video_path):
-    global playing_video, current_video_path
-    playing_video = True
-    current_video_path = video_path
-    threading.Thread(target=play_video, args=(video_path,)).start()
-    print(f"Video started from path: {video_path}")  # Debug statement
-
 
 def stop_video():
     global playing_video
@@ -303,9 +306,15 @@ def stop_video():
     if audio_thread is not None:
         audio_thread.join()
     video_canvas.delete("all")
-    pygame.mixer.music.stop()
+    stop_audio()
     print("Video stopped")  # Debug statement
 
+def start_video(video_path):
+    global playing_video, current_video_path
+    playing_video = True
+    current_video_path = video_path
+    threading.Thread(target=play_video, args=(video_path,)).start()
+    print(f"Video started from path: {video_path}")  # Debug statement
 
 def show_card():
     global card_index, current_cards
@@ -332,16 +341,15 @@ def show_card():
             # Stop the previous video before starting a new one
             stop_video()
 
-            if video_path:
+            if video_path and notebook.tab(notebook.select(), "text") == 'Learning Mode ':
                 print(f"Starting video from path: {video_path}")  # Debug statement
                 start_video(video_path)
             else:
-                print("No video path found")  # Debug statement
+                print("No video path found or not in Learning Mode")  # Debug statement
         else:
             clear_flashcard_display()
     else:
         clear_flashcard_display()
-
 
 # Function to flip the current card and display its definition
 def flip_card():
@@ -352,23 +360,13 @@ def flip_card():
         word, definition, image_path, video_path = current_cards[card_index]
         answer_label.config(text=definition)
 
-# Function to move to the next card
-def next_card():
-    global card_index
-    global current_cards
-
-    if current_cards:
-        card_index = min(card_index + 1, len(current_cards) - 1)
-        show_card()
-
-# Function to move to the previous card
-def prev_card():
-    global card_index
-    global current_cards
-
-    if current_cards:
-        card_index = max(card_index - 1, 0)
-        show_card()
+def on_tab_changed(event):
+    selected_tab = event.widget.select()
+    tab_text = event.widget.tab(selected_tab, "text")
+    if tab_text == 'Learning Mode ' and current_cards:
+        show_card()  # Show the card to start video immediately
+    else:
+        stop_video()  # Stop video when switching out of learning mode
 
 def browse_file(path_var, video=False):
     filetypes = [('Video files', '*.mp4;*.avi;*.mkv')] if video else [('Image files', '*.png;*.jpg;*.jpeg;*.gif')]
@@ -377,6 +375,9 @@ def browse_file(path_var, video=False):
         absolute_path = os.path.abspath(file_path)
         path_var.set(absolute_path)
 
+def on_closing():
+    stop_video()  # Ensure video stops when program closes
+    root.destroy()
 
 if __name__ == '__main__':
     # Connect to sqlite database
@@ -402,6 +403,9 @@ if __name__ == '__main__':
     # Notebook widget
     notebook = ttk.Notebook(root)
     notebook.pack(fill='both', expand=True)
+
+    # Bind the tab change event
+    notebook.bind("<<NotebookTabChanged>>", on_tab_changed)
 
     # Create set frame
     create_set_frame = ttk.Frame(notebook)
@@ -481,4 +485,5 @@ if __name__ == '__main__':
 
     populate_sets_combobox()
 
+    root.protocol("WM_DELETE_WINDOW", on_closing)
     root.mainloop()
