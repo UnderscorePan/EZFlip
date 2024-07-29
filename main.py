@@ -20,6 +20,7 @@ current_video_path = ""
 audio_thread = None
 current_cards = []
 card_index = 0
+video_lock = threading.Lock()  # Lock for video threading
 
 # Function to create database
 def create_tables(conn):
@@ -176,7 +177,7 @@ def populate_sets_combobox():
     sets_combobox['values'] = tuple(get_sets(conn).keys())
     sets_combobox.set('')  # Clear the current selection
 
-# Function to delete selected flashcard set
+# Function to delete selected flashcard setn
 def delete_selected_set():
     set_name = sets_combobox.get()
     if set_name:
@@ -278,56 +279,59 @@ def stop_audio():
 
 def play_video(video_path):
     global playing_video, audio_thread
-    cap = cv2.VideoCapture(video_path)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    frame_time = 1 / fps  # Time per frame in seconds
+    with video_lock:  # Acquire lock to ensure thread safety
+        cap = cv2.VideoCapture(video_path)
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        frame_time = 1 / fps  # Time per frame in seconds
 
-    # Start audio playback directly
-    audio_thread = threading.Thread(target=play_audio, args=(video_path,))
-    audio_thread.start()
+        # Start audio playback directly
+        audio_thread = threading.Thread(target=play_audio, args=(video_path,))
+        audio_thread.start()
 
-    start_time = time.time()
+        start_time = time.time()
 
-    while cap.isOpened() and playing_video:
-        ret, frame = cap.read()
-        if not ret:
-            break
+        while cap.isOpened() and playing_video:
+            ret, frame = cap.read()
+            if not ret:
+                break
 
-        # Calculate the exact time the frame should be displayed
-        current_time = time.time()
-        elapsed_time = current_time - start_time
-        expected_frame_number = int(elapsed_time * fps)
-        cap.set(cv2.CAP_PROP_POS_FRAMES, expected_frame_number)
+            # Calculate the exact time the frame should be displayed
+            current_time = time.time()
+            elapsed_time = current_time - start_time
+            expected_frame_number = int(elapsed_time * fps)
+            cap.set(cv2.CAP_PROP_POS_FRAMES, expected_frame_number)
 
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame = cv2.resize(frame, (400, 300))
-        img = ImageTk.PhotoImage(Image.fromarray(frame))
-        video_canvas.create_image(0, 0, anchor=tk.NW, image=img)
-        video_canvas.image = img
-        video_canvas.update()
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame = cv2.resize(frame, (400, 300))
+            img = ImageTk.PhotoImage(Image.fromarray(frame))
+            video_canvas.create_image(0, 0, anchor=tk.NW, image=img)
+            video_canvas.image = img
+            video_canvas.update()
 
-        # Sleep for the remaining time to maintain fps
-        time.sleep(max(0, frame_time - (time.time() - current_time)))
+            # Sleep for the remaining time to maintain fps
+            time.sleep(max(0, frame_time - (time.time() - current_time)))
 
-    cap.release()
-    stop_audio()  # Ensure audio stops when video playback ends
-    print("Video playback ended")  # Debug statement
+        cap.release()
+        stop_audio()  # Ensure audio stops when video playback ends
+        print("Video playback ended")  # Debug statement
 
 def stop_video():
     global playing_video
-    playing_video = False
-    if audio_thread is not None:
-        audio_thread.join()
-    video_canvas.delete("all")
-    stop_audio()
-    print("Video stopped")  # Debug statement
+    with video_lock:  # Ensure thread safety
+        playing_video = False
+        if audio_thread is not None:
+            audio_thread.join()
+        video_canvas.delete("all")
+        stop_audio()
+        print("Video stopped")  # Debug statement
 
 def start_video(video_path):
     global playing_video, current_video_path
-    playing_video = True
-    current_video_path = video_path
-    threading.Thread(target=play_video, args=(video_path,)).start()
-    print(f"Video started from path: {video_path}")  # Debug statement
+    with video_lock:  # Ensure thread safety
+        playing_video = True
+        current_video_path = video_path
+        threading.Thread(target=play_video, args=(video_path,)).start()
+        print(f"Video started from path: {video_path}")  # Debug statement
 
 def show_card():
     global card_index, current_cards
