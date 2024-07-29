@@ -15,6 +15,7 @@ import time
 pygame.mixer.init()
 
 # Initialize variables for threading
+audio_path = ''
 playing_video = False
 current_video_path = ""
 audio_thread = None
@@ -256,6 +257,7 @@ def extract_audio(video_path):
     return audio_path
 
 def play_audio(video_path):
+    global audio_path
     try:
         audio_path = extract_audio(video_path)
         pygame.mixer.music.load(audio_path)
@@ -268,14 +270,14 @@ def play_audio(video_path):
     except Exception as e:
         messagebox.showerror("Error", f"Failed to play audio: {e}")
         raise
-    finally:
-        if os.path.exists(audio_path):
-            os.remove(audio_path)  # Remove the temporary audio file after playing
+
 
 def stop_audio():
+    global audio_path
     if pygame.mixer.music.get_busy():
         pygame.mixer.music.stop()
     print("Audio stopped")  # Debug statement
+
 
 def play_video(video_path):
     global playing_video, audio_thread
@@ -317,6 +319,7 @@ def play_video(video_path):
 
 def stop_video():
     global playing_video
+    playing_video = False
     with video_lock:  # Ensure thread safety
         playing_video = False
         if audio_thread is not None:
