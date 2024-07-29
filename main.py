@@ -11,14 +11,63 @@ import tempfile
 import pygame
 import time
 
+class ToolTip:
+    def __init__(self, widget, text='widget info'):
+        self.widget = widget
+        self.text = text
+        self.tip_window = None
+        self.id = None
+        self.x = self.y = 0
+        self.widget.bind("<Enter>", self.enter)
+        self.widget.bind("<Leave>", self.leave)
+
+    def enter(self, event=None):
+        self.schedule()
+
+    def leave(self, event=None):
+        self.unschedule()
+        self.hide_tip()
+
+    def schedule(self):
+        self.unschedule()
+        self.id = self.widget.after(500, self.show_tip)
+
+    def unschedule(self):
+        id = self.id
+        self.id = None
+        if id:
+            self.widget.after_cancel(id)
+
+    def show_tip(self, event=None):
+        x = y = 0
+        x, y, _, _ = self.widget.bbox("insert")
+        x += self.widget.winfo_rootx() + 25
+        y += self.widget.winfo_rooty() + 25
+        self.tip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(1)
+        tw.wm_geometry(f"+{x}+{y}")
+        label = tk.Label(tw, text=self.text, justify=tk.LEFT,
+                         background="#ffffe0", relief=tk.SOLID, borderwidth=1)
+        label.pack(ipadx=1)
+
+    def hide_tip(self):
+        tw = self.tip_window
+        self.tip_window = None
+        if tw:
+            tw.destroy()
+
+
+
 # Initialize Pygame mixer
 pygame.mixer.init()
 
 # Initialize variables for threading
 audio_path = ''
 playing_video = False
+stopping_video = False
 current_video_path = ""
 audio_thread = None
+video_thread = None
 current_cards = []
 card_index = 0
 video_lock = threading.Lock()  # Lock for video threading
@@ -208,16 +257,18 @@ def select_set():
         clear_flashcard_display()
 
 def next_card():
-    global card_index, current_cards
+    global card_index, current_cards, playing_video
     stop_video()  # Stop video before moving to next card
     if current_cards:
+        clear_flashcard_display()
         card_index = min(card_index + 1, len(current_cards) - 1)
         show_card()
 
 def prev_card():
-    global card_index, current_cards
+    global card_index, current_cards, playing_video
     stop_video()  # Stop video before moving to previous card
     if current_cards:
+        clear_flashcard_display()
         card_index = max(card_index - 1, 0)
         show_card()
 
@@ -244,7 +295,7 @@ def extract_audio(video_path):
     try:
         with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_audio_file:
             audio_path = temp_audio_file.name
-        ffmpeg.input(video_path).output(audio_path).run(overwrite_output=True)
+        ffmpeg.input(video_path).output(audio_path, loglevel="quiet").run(overwrite_output=True)
     except FileNotFoundError:
         messagebox.showerror("Error", "FFmpeg not found. Please install FFmpeg and ensure it is in the PATH.")
         raise
@@ -276,65 +327,59 @@ def stop_audio():
     global audio_path
     if pygame.mixer.music.get_busy():
         pygame.mixer.music.stop()
-    print("Audio stopped")  # Debug statement
 
 
 def play_video(video_path):
-    global playing_video, audio_thread
-    with video_lock:  # Acquire lock to ensure thread safety
-        cap = cv2.VideoCapture(video_path)
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        frame_time = 1 / fps  # Time per frame in seconds
+    global playing_video, audio_thread, stopping_video
 
-        # Start audio playback directly
-        audio_thread = threading.Thread(target=play_audio, args=(video_path,))
-        audio_thread.start()
+    #with video_lock:  # Acquire lock to ensure thread safety
+    cap = cv2.VideoCapture(video_path)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    frame_time = 1 / fps  # Time per frame in seconds
 
-        start_time = time.time()
+    # Start audio playback directly
+    audio_thread = threading.Thread(target=play_audio, args=(video_path,))
+    audio_thread.start()
+    start_time = time.time()
 
-        while cap.isOpened() and playing_video:
-            ret, frame = cap.read()
-            if not ret:
-                break
+    while cap.isOpened() and playing_video:
+        ret, frame = cap.read()
 
-            # Calculate the exact time the frame should be displayed
-            current_time = time.time()
-            elapsed_time = current_time - start_time
-            expected_frame_number = int(elapsed_time * fps)
-            cap.set(cv2.CAP_PROP_POS_FRAMES, expected_frame_number)
+        if not ret:
+            break
 
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frame = cv2.resize(frame, (400, 300))
-            img = ImageTk.PhotoImage(Image.fromarray(frame))
-            video_canvas.create_image(0, 0, anchor=tk.NW, image=img)
-            video_canvas.image = img
-            video_canvas.update()
+        # Calculate the exact time the frame should be displayed
+        current_time = time.time()
+        elapsed_time = current_time - start_time
+        expected_frame_number = int(elapsed_time * fps)
+        cap.set(cv2.CAP_PROP_POS_FRAMES, expected_frame_number)
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame = cv2.resize(frame, (400, 300))
+        img = ImageTk.PhotoImage(Image.fromarray(frame))
 
-            # Sleep for the remaining time to maintain fps
-            time.sleep(max(0, frame_time - (time.time() - current_time)))
+        video_canvas.create_image(0, 0, anchor=tk.NW, image=img)
+        video_canvas.image = img
+        video_canvas.update()
+        # Sleep for the remaining time to maintain fps
+        time.sleep(max(0, frame_time - (time.time() - current_time)))
 
-        cap.release()
-        stop_audio()  # Ensure audio stops when video playback ends
-        print("Video playback ended")  # Debug statement
+    cap.release()
+    stop_audio()  # Ensure audio stops when video playback ends
 
 def stop_video():
-    global playing_video
+    global playing_video, video_thread, stopping_video
     playing_video = False
-    with video_lock:  # Ensure thread safety
-        playing_video = False
-        if audio_thread is not None:
-            audio_thread.join()
-        video_canvas.delete("all")
-        stop_audio()
-        print("Video stopped")  # Debug statement
+    if video_thread:
+        video_thread.join()
+    stop_audio()
 
 def start_video(video_path):
-    global playing_video, current_video_path
-    with video_lock:  # Ensure thread safety
-        playing_video = True
-        current_video_path = video_path
-        threading.Thread(target=play_video, args=(video_path,)).start()
-        print(f"Video started from path: {video_path}")  # Debug statement
+    global playing_video, current_video_path, video_thread
+    #with video_lock:  # Ensure thread safety
+    playing_video = True
+    current_video_path = video_path
+    play_video(video_path)
+    #video_thread = threading.Thread(target=play_video, args=(video_path,)).start()
 
 def show_card():
     global card_index, current_cards
@@ -362,7 +407,6 @@ def show_card():
             stop_video()
 
             if video_path and notebook.tab(notebook.select(), "text") == 'Learning Mode ':
-                print(f"Starting video from path: {video_path}")  # Debug statement
                 start_video(video_path)
             else:
                 print("No video path found or not in Learning Mode")  # Debug statement
@@ -495,7 +539,9 @@ if __name__ == '__main__':
     video_canvas.pack(padx=5, pady=10)
 
     # Flip button
-    ttk.Button(flashcards_frame, text='Flip', command=flip_card).pack(side='left', padx=5, pady=5)
+    flip_button = ttk.Button(flashcards_frame, text='Flip', command=flip_card)
+    flip_button.pack(side='left',padx=5,pady=5)
+    ToolTip(flip_button, text="Click to flip the card")
 
     # Next button
     ttk.Button(flashcards_frame, text='Next', command=next_card).pack(side='right', padx=5, pady=5)
