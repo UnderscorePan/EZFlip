@@ -8,6 +8,8 @@ EZFlip is a flashcard application designed to help users create, manage, and lea
 - Add flashcards with text, images, and videos
 - Learn mode with gesture control for flipping cards and navigating
 - Simple and intuitive user interface
+- Tooltip assistance for buttons and interactive elements
+- Video and audio synchronization for flashcards with video content
 
 ## Requirements
 
@@ -25,7 +27,7 @@ EZFlip is a flashcard application designed to help users create, manage, and lea
 
 1. **Clone the repository:**
     ```bash
-    git clone https://github.com/yourusername/ezflip.git
+    git clone https://github.com/underscorepan/ezflip.git
     cd ezflip
     ```
 
@@ -35,8 +37,8 @@ EZFlip is a flashcard application designed to help users create, manage, and lea
     ```
 
 3. **Install FFMPEG:**
-    - Download FFMPEG from the official site: https://ffmpeg.org/download.html
-    - Add FFMPEG to your system's PATH.
+   - Download FFMPEG from the official site: [FFMPEG Download](https://ffmpeg.org/download.html)
+   - Add FFMPEG to your system's PATH.
 
 4. **Run the application:**
     ```bash
@@ -61,9 +63,14 @@ EZFlip is a flashcard application designed to help users create, manage, and lea
 4. Use the `Previous` and `Next` buttons to navigate through the flashcards.
 5. Click `Flip` to view the definition of the current flashcard.
 6. Use hand gestures to control the flashcards:
-    - 1 finger: Previous card
-    - 2 fingers: Next card
-    - 3 fingers: Flip card
+   - 1 finger: Previous card
+   - 2 fingers: Next card
+   - 3 fingers: Flip card
+
+### Updating and Deleting Sets
+
+1. To update the name of a flashcard set, enter the new name in the `New Set Name` field and click `Update Set Name`.
+2. To delete a flashcard set, select the set from the dropdown and click `Delete Set`.
 
 ## Gesture Control
 
@@ -71,6 +78,27 @@ The application uses Mediapipe for gesture recognition. To use gesture control:
 
 1. Ensure your webcam is enabled.
 2. The application will automatically detect hand gestures and perform actions based on the number of fingers shown.
+
+## Code Overview
+
+### Dependencies
+
+The following libraries and modules are used in the application:
+
+- **Tkinter** and **Ttkbootstrap** for the GUI.
+- **SQLite3** for database management.
+- **PIL (Pillow)** for image processing.
+- **OpenCV** for video processing.
+- **FFMPEG** for audio extraction.
+- **Pygame** for audio playback.
+- **Mediapipe** for gesture recognition.
+
+### Key Components
+
+- **Database Management:** Functions to create, update, and delete flashcard sets and cards.
+- **Flashcard Display:** Functions to display text, images, and videos on flashcards.
+- **Gesture Control:** Mediapipe integration for gesture-based navigation.
+- **Audio-Video Synchronization:** Extraction and playback of audio from video files.
 
 ## Contributing
 
@@ -86,3 +114,7 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 - Mediapipe for gesture recognition
 - OpenCV for video processing
 - FFMPEG for audio extraction
+- Pygame for audio playback
+- @Grimmlen_ for the Walfie Suisei
+
+---

@@ -36,13 +36,9 @@ class ToolTip:
         self.id = self.widget.after(500, self.show_tip)
 
     def unschedule(self):
-        id = self.id
         self.id = None
-        if id:
-            self.widget.after_cancel(id)
 
     def show_tip(self, event=None):
-        x = y = 0
         x, y, _, _ = self.widget.bbox("insert")
         x += self.widget.winfo_rootx() + 25
         y += self.widget.winfo_rooty() + 25
@@ -54,12 +50,9 @@ class ToolTip:
         label.pack(ipadx=1)
 
     def hide_tip(self):
-        tw = self.tip_window
-        self.tip_window = None
-        if tw:
-            tw.destroy()
-
-
+        if self.tip_window:
+            self.tip_window.destroy()
+            self.tip_window = None
 
 # Initialize Pygame mixer
 pygame.mixer.init()
@@ -195,6 +188,17 @@ def delete_set(conn, set_id):
     current_cards = []
     card_index = 0
 
+# Function to update the name of a flashcard set
+def update_set_name(conn, set_id, new_name):
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE flashcard_sets
+        SET name = ?
+        WHERE id = ?
+    ''', (new_name, set_id))
+    conn.commit()
+    populate_sets_combobox()
+
 # Function to create new set
 def create_set():
     set_name = set_name_var.get()
@@ -237,7 +241,7 @@ def populate_sets_combobox():
     sets_combobox['values'] = tuple(get_sets(conn).keys())
     sets_combobox.set('')  # Clear the current selection
 
-# Function to delete selected flashcard setn
+# Function to delete selected flashcard set
 def delete_selected_set():
     set_name = sets_combobox.get()
     if set_name:
@@ -317,7 +321,6 @@ def extract_audio(video_path):
         raise
     return audio_path
 
-
 def play_audio(video_path):
     global audio_path
     try:
@@ -332,7 +335,6 @@ def play_audio(video_path):
     except Exception as e:
         messagebox.showerror("Error", f"Failed to play audio: {e}")
         raise
-
 
 def stop_audio():
     global audio_path
@@ -408,7 +410,6 @@ def start_video(video_path):
     current_video_path = video_path
     threading.Thread(target=play_video, args=(video_path,)).start()
 
-
 def show_card():
     global card_index, current_cards
 
@@ -419,29 +420,36 @@ def show_card():
             answer_label.config(text='')
 
             if image_path:
-                try:
-                    image = Image.open(image_path)
-                    image = image.resize((200, 200), Image.LANCZOS)
-                    photo = ImageTk.PhotoImage(image)
-                    image_label.config(image=photo)
-                    image_label.image = photo
-                except Exception as e:
-                    image_label.config(text='Error loading image')
+                display_image(image_path)
             else:
-                image_label.config(image='')
-                image_label.image = None
+                video_canvas.delete("all")  # Ensure the canvas is cleared if no image
 
-            # Stop the previous video before starting a new one
-            stop_video()
+            stop_video()  # Stop the previous video before starting a new one
 
             if video_path and notebook.tab(notebook.select(), "text") == 'Learning Mode ':
                 start_video(video_path)
             else:
                 print("No video path found or not in Learning Mode")  # Debug statement
+
+            character_label.config(image=unflipped_photo)
+            character_label.image = unflipped_photo
         else:
             clear_flashcard_display()
     else:
         clear_flashcard_display()
+
+def display_image(image_path):
+    try:
+        image = Image.open(image_path)
+        image = image.resize((400, 300), Image.LANCZOS)  # Resize to 400x300
+        photo = ImageTk.PhotoImage(image)
+        video_canvas.create_image(0, 0, anchor=tk.NW, image=photo)
+        video_canvas.image = photo
+        video_canvas.update()
+    except Exception as e:
+        video_canvas.delete("all")
+        video_canvas.create_text(200, 150, text='Error loading image', fill='red', font=('TkDefaultFont', 24))
+
 
 # Function to flip the current card and display its definition
 def flip_card():
@@ -451,6 +459,8 @@ def flip_card():
     if current_cards:
         word, definition, image_path, video_path = current_cards[card_index]
         answer_label.config(text=definition)
+        character_label.config(image=flipped_photo)
+        character_label.image = flipped_photo
 
 def on_tab_changed(event):
     selected_tab = event.widget.select()
@@ -471,7 +481,7 @@ def on_closing():
     stop_video()  # Ensure video stops when program closes
     root.destroy()
 
-    # Initialize Mediapipe hands
+# Initialize Mediapipe hands
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(min_detection_confidence=0.7, min_tracking_confidence=0.7)
 mp_drawing = mp.solutions.drawing_utils
@@ -548,69 +558,6 @@ def gesture_control():
 # Start the gesture control in a separate thread
 gesture_thread = threading.Thread(target=gesture_control)
 gesture_thread.start()
-# Initialize Mediapipe hands
-mp_hands = mp.solutions.hands
-hands = mp_hands.Hands(min_detection_confidence=0.7, min_tracking_confidence=0.7)
-mp_drawing = mp.solutions.drawing_utils
-
-# Initialize state
-previous_finger_count = 0
-
-def count_fingers(hand_landmarks):
-    finger_tips = [mp_hands.HandLandmark.INDEX_FINGER_TIP,
-                   mp_hands.HandLandmark.MIDDLE_FINGER_TIP,
-                   mp_hands.HandLandmark.RING_FINGER_TIP,
-                   mp_hands.HandLandmark.PINKY_TIP]
-
-    count = 0
-    for tip in finger_tips:
-        if hand_landmarks.landmark[tip].y < hand_landmarks.landmark[tip - 2].y:
-            count += 1
-    return count
-
-def gesture_control():
-    global previous_finger_count
-    cap = cv2.VideoCapture(0)
-
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        frame = cv2.flip(frame, 1)
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = hands.process(rgb_frame)
-
-        current_finger_count = 0
-
-        if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
-                current_finger_count = count_fingers(hand_landmarks)
-
-                if current_finger_count != previous_finger_count:
-                    if current_finger_count == 1:
-                        prev_card()  # One finger lifted
-                    elif current_finger_count == 2:
-                        next_card()  # Two fingers lifted
-                    elif current_finger_count == 3:
-                        flip_card()  # Three fingers lifted
-                    previous_finger_count = current_finger_count
-
-                mp_drawing.draw_landmarks(frame, hand   _landmarks, mp_hands.HAND_CONNECTIONS)
-        else:
-            previous_finger_count = 0  # Reset when no hand is detected
-
-        cv2.imshow('Gesture Control', frame)
-
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-    cap.release()
-    cv2.destroyAllWindows()
-
-# Start the gesture control in a separate thread
-gesture_thread = threading.Thread(target=gesture_control)
-gesture_thread.start()
 
 if __name__ == '__main__':
     # Connect to sqlite database
@@ -620,11 +567,28 @@ if __name__ == '__main__':
 
     root = tk.Tk()
     root.title('EZFlip')
-    root.geometry('500x700')
+    root.geometry('500x750')
 
     style = Style(theme='solar')
     style.configure('TLabel', font=('TkDefaultFont', 18))
     style.configure('TButton', font=('TkDefaultFont', 16))
+
+    # Load character images after creating the Tkinter root window
+    def load_character_images():
+        global flipped_photo, unflipped_photo
+
+        flipped_image_path = "Sam_Walfie.png"
+        unflipped_image_path = "Sam_Walfie_unflipped.png"
+
+        flipped_image = Image.open(flipped_image_path)
+        flipped_image = flipped_image.resize((150, 150), Image.LANCZOS)
+        flipped_photo = ImageTk.PhotoImage(flipped_image)
+
+        unflipped_image = Image.open(unflipped_image_path)
+        unflipped_image = unflipped_image.resize((150, 150), Image.LANCZOS)
+        unflipped_photo = ImageTk.PhotoImage(unflipped_image)
+
+    load_character_images()
 
     # Variables for storing inputs
     set_name_var = tk.StringVar()
@@ -632,6 +596,7 @@ if __name__ == '__main__':
     definition_var = tk.StringVar()
     image_path_var = tk.StringVar()
     video_path_var = tk.StringVar()
+    new_set_name_var = tk.StringVar()  # Variable to store the new set name
 
     # Notebook widget
     notebook = ttk.Notebook(root)
@@ -679,6 +644,11 @@ if __name__ == '__main__':
     sets_combobox = ttk.Combobox(select_set_frame, state='readonly')
     sets_combobox.pack(padx=5, pady=40)
 
+    # Textbox and button for updating the set name
+    ttk.Label(select_set_frame, text='New Set Name: ').pack(padx=5, pady=5)
+    ttk.Entry(select_set_frame, textvariable=new_set_name_var, width=30).pack(padx=5, pady=5)
+    ttk.Button(select_set_frame, text='Update Set Name', command=lambda: update_set_name(conn, get_sets(conn)[sets_combobox.get()], new_set_name_var.get())).pack(padx=5, pady=5)
+
     # Delete and add button
     ttk.Button(select_set_frame, text='Select Set', command=select_set).pack(padx=5, pady=5)
     ttk.Button(select_set_frame, text='Delete Set', command=delete_selected_set).pack(padx=5, pady=5)
@@ -701,15 +671,21 @@ if __name__ == '__main__':
 
     # Label to display image
     image_label = ttk.Label(flashcards_frame)
-    image_label.pack(padx=5, pady=10)
+    image_label.pack(pady=(5, 0), padx=5)  # Adjust the padding to reduce vertical space
+
+
 
     # Canvas to display video
     video_canvas = tk.Canvas(flashcards_frame, width=400, height=300)
     video_canvas.pack(padx=5, pady=10)
 
-    # Flip button
+    # Character image label
+    character_label = ttk.Label(flashcards_frame)
+    character_label.pack(pady=(0, 10))
+
+# Flip button
     flip_button = ttk.Button(flashcards_frame, text='Flip', command=flip_card)
-    flip_button.pack(side='left',padx=5,pady=5)
+    flip_button.pack(side='left', padx=5, pady=5)
     ToolTip(flip_button, text="Click to flip the card")
 
     # Next button
