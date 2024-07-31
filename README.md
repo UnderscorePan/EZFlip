@@ -78,7 +78,7 @@ The application uses Mediapipe for gesture recognition. To use gesture control:
 
 1. Ensure your webcam is enabled.
 2. The application will automatically detect hand gestures and perform actions based on the number of fingers shown.
-3. Press `Q` to turn off the webcam at anymoment.
+3. Press `Q` to turn off the webcam at any moment.
 
 ## Code Overview
 
