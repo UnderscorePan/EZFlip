@@ -596,7 +596,7 @@ def gesture_control():
                         flip_card()  # Three fingers lifted
                     previous_finger_count = current_finger_count
 
-                mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+                mp_drawing.draw_landmarks(frame, hand   _landmarks, mp_hands.HAND_CONNECTIONS)
         else:
             previous_finger_count = 0  # Reset when no hand is detected
 
@@ -648,7 +648,7 @@ if __name__ == '__main__':
     ttk.Label(create_set_frame, text='Set Name: ').pack(padx=5, pady=5)
     ttk.Entry(create_set_frame, textvariable=set_name_var, width=30).pack(padx=5, pady=5)
 
-    ttk.Label(create_set_frame, text='Word: ').pack(padx=5, pady=5)
+    ttk.Label(create_set_frame, text='Word(s): ').pack(padx=5, pady=5)
     ttk.Entry(create_set_frame, textvariable=word_var, width=30).pack(padx=5, pady=5)
 
     ttk.Label(create_set_frame, text='Answer: ').pack(padx=5, pady=5)
