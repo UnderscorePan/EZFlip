@@ -210,6 +210,7 @@ def create_set():
         if set_name not in get_sets(conn):
             set_id = add_set(conn, set_name)
             populate_sets_combobox()
+            populate_sets_combobox_edit()  # Add this line to refresh the edit set combobox
             set_name_var.set('')
 
             # Clear input fields
@@ -218,6 +219,7 @@ def create_set():
             definition_var.set('')
             image_path_var.set('')
             video_path_var.set('')
+
 
 def add_word():
     set_name = set_name_var.get()
@@ -238,9 +240,9 @@ def add_word():
         image_path_var.set('')
         video_path_var.set('')  # Ensure video_path is cleared after adding
         populate_sets_combobox()
+        populate_sets_combobox_edit()  # Add this line to refresh the edit set combobox
     else:
         messagebox.showerror("Error", "Please fill in all fields.")
-
 def populate_sets_combobox():
     sets_combobox['values'] = tuple(get_sets(conn).keys())
     sets_combobox.set('')  # Clear the current selection
