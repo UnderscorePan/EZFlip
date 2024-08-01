@@ -15,12 +15,13 @@ import mediapipe as mp
 import queue
 
 class ToolTip:
-    def __init__(self, widget, text='widget info'):
+    def __init__(self, widget, text='widget info', delay=1000):
         self.widget = widget
         self.text = text
         self.tip_window = None
         self.id = None
         self.x = self.y = 0
+        self.delay = delay  # Delay in milliseconds
         self.widget.bind("<Enter>", self.enter)
         self.widget.bind("<Leave>", self.leave)
 
@@ -33,10 +34,12 @@ class ToolTip:
 
     def schedule(self):
         self.unschedule()
-        self.id = self.widget.after(500, self.show_tip)
+        self.id = self.widget.after(self.delay, self.show_tip)
 
     def unschedule(self):
-        self.id = None
+        if self.id:
+            self.widget.after_cancel(self.id)
+            self.id = None
 
     def show_tip(self, event=None):
         x, y, _, _ = self.widget.bbox("insert")

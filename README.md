@@ -6,10 +6,12 @@ EZFlip is a flashcard application designed to help users create, manage, and lea
 
 - Create and manage flashcard sets
 - Add flashcards with text, images, and videos
+- Edit existing flashcard sets
 - Learn mode with gesture control for flipping cards and navigating
 - Simple and intuitive user interface
 - Tooltip assistance for buttons and interactive elements
 - Video and audio synchronization for flashcards with video content
+- Scrollable interface for managing large sets of flashcards
 
 ## Requirements
 
@@ -55,6 +57,15 @@ EZFlip is a flashcard application designed to help users create, manage, and lea
 4. Click `Add Word` to add the flashcard to the set.
 5. Click `Save Set` to save the flashcard set.
 
+### Editing an Existing Flashcard Set
+
+1. Navigate to the `Edit Set` tab.
+2. Choose a flashcard set from the dropdown and click `Select Set`.
+3. View the list of flashcards in the selected set.
+4. To delete a flashcard, select it from the list and click `Delete Word`.
+5. To add a new flashcard, enter the details in the provided fields and click `Add Word`.
+6. To update the name of the flashcard set, enter the new name in the `New Set Name` field and click `Update Set Name`.
+
 ### Learning Mode
 
 1. Navigate to the `Select Set` tab.
@@ -69,8 +80,8 @@ EZFlip is a flashcard application designed to help users create, manage, and lea
 
 ### Updating and Deleting Sets
 
-1. To update the name of a flashcard set, enter the new name in the `New Set Name` field and click `Update Set Name`.
-2. To delete a flashcard set, select the set from the dropdown and click `Delete Set`.
+1. To update the name of a flashcard set, enter the new name in the `New Set Name` field in the `Edit Set` tab and click `Update Set Name`.
+2. To delete a flashcard set, select the set from the dropdown in the `Select Set` tab and click `Delete Set`.
 
 ## Gesture Control
 
@@ -100,6 +111,7 @@ The following libraries and modules are used in the application:
 - **Flashcard Display:** Functions to display text, images, and videos on flashcards.
 - **Gesture Control:** Mediapipe integration for gesture-based navigation.
 - **Audio-Video Synchronization:** Extraction and playback of audio from video files.
+- **Scrollable Interface:** Canvas and scrollbar implementation to handle large sets of flashcards.
 
 ## Contributing
 
@@ -118,4 +130,3 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 - Pygame for audio playback
 - @Grimmlen_ for the Walfie Suisei
 
----
