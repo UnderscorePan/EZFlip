@@ -198,6 +198,7 @@ def update_set_name(conn, set_id, new_name):
     ''', (new_name, set_id))
     conn.commit()
     populate_sets_combobox()
+    populate_sets_combobox_edit()
 
 # Function to create new set
 def create_set():
@@ -240,6 +241,10 @@ def add_word():
 def populate_sets_combobox():
     sets_combobox['values'] = tuple(get_sets(conn).keys())
     sets_combobox.set('')  # Clear the current selection
+
+def populate_sets_combobox_edit():
+    sets_combobox_edit['values'] = tuple(get_sets(conn).keys())
+    sets_combobox_edit.set('')  # Clear the current selection
 
 # Function to delete selected flashcard set
 def delete_selected_set():
@@ -470,6 +475,54 @@ def on_tab_changed(event):
     else:
         stop_video()  # Stop video when switching out of learning mode
 
+def update_word():
+    set_name = sets_combobox_edit.get()
+    word = word_var_edit.get()
+    definition = definition_var_edit.get()
+    image_path = image_path_var_edit.get() if image_path_var_edit.get() else None
+    video_path = video_path_var_edit.get() if video_path_var_edit.get() else None
+
+    if set_name and word and definition:
+        sets = get_sets(conn)
+        if set_name in sets:
+            set_id = sets[set_name]
+            add_card(conn, set_id, word, definition, image_path, video_path)
+            word_var_edit.set('')
+            definition_var_edit.set('')
+            image_path_var_edit.set('')
+            video_path_var_edit.set('')  # Ensure video_path is cleared after adding
+            populate_flashcards_listbox(set_id)
+        else:
+            messagebox.showerror("Error", "Set not found.")
+    else:
+        messagebox.showerror("Error", "Please fill in all fields.")
+
+def delete_word():
+    selected_word = flashcards_listbox.get(tk.ACTIVE)
+    if selected_word:
+        set_name = sets_combobox_edit.get()
+        sets = get_sets(conn)
+        set_id = sets[set_name]
+        cursor = conn.cursor()
+        cursor.execute('''
+            DELETE FROM flashcards
+            WHERE set_id = ? AND word = ?
+        ''', (set_id, selected_word))
+        conn.commit()
+        populate_flashcards_listbox(set_id)
+
+def populate_flashcards_listbox(set_id):
+    flashcards_listbox.delete(0, tk.END)
+    cards = get_cards(conn, set_id)
+    for card in cards:
+        flashcards_listbox.insert(tk.END, card[0])  # Display word in the listbox
+
+def select_set_for_edit():
+    set_name = sets_combobox_edit.get()
+    if set_name:
+        set_id = get_sets(conn)[set_name]
+        populate_flashcards_listbox(set_id)
+
 def browse_file(path_var, video=False):
     filetypes = [('Video files', '*.mp4;*.avi;*.mkv')] if video else [('Image files', '*.png;*.jpg;*.jpeg;*.gif')]
     file_path = filedialog.askopenfilename(filetypes=filetypes)
@@ -567,7 +620,7 @@ if __name__ == '__main__':
 
     root = tk.Tk()
     root.title('EZFlip')
-    root.geometry('500x750')
+    root.geometry('550x750')
 
     style = Style(theme='solar')
     style.configure('TLabel', font=('TkDefaultFont', 18))
@@ -597,6 +650,12 @@ if __name__ == '__main__':
     image_path_var = tk.StringVar()
     video_path_var = tk.StringVar()
     new_set_name_var = tk.StringVar()  # Variable to store the new set name
+
+    # Initialize variables for storing inputs in the edit set page
+    word_var_edit = tk.StringVar()
+    definition_var_edit = tk.StringVar()
+    image_path_var_edit = tk.StringVar()
+    video_path_var_edit = tk.StringVar()
 
     # Notebook widget
     notebook = ttk.Notebook(root)
@@ -644,11 +703,6 @@ if __name__ == '__main__':
     sets_combobox = ttk.Combobox(select_set_frame, state='readonly')
     sets_combobox.pack(padx=5, pady=40)
 
-    # Textbox and button for updating the set name
-    ttk.Label(select_set_frame, text='New Set Name: ').pack(padx=5, pady=5)
-    ttk.Entry(select_set_frame, textvariable=new_set_name_var, width=30).pack(padx=5, pady=5)
-    ttk.Button(select_set_frame, text='Update Set Name', command=lambda: update_set_name(conn, get_sets(conn)[sets_combobox.get()], new_set_name_var.get())).pack(padx=5, pady=5)
-
     # Delete and add button
     select_button = ttk.Button(select_set_frame, text='Select Set', command=select_set)
     select_button.pack(padx=5, pady=5)
@@ -661,6 +715,77 @@ if __name__ == '__main__':
     ttk.Label(select_set_frame, text='2 fingers to go next').pack(padx=5, pady=5)
     ttk.Label(select_set_frame, text='3 fingers to flip').pack(padx=5, pady=5)
     ttk.Label(select_set_frame, text='Press Q to turn it off').pack(padx=5,pady=5)
+
+    # Edit set page
+    edit_set_frame = ttk.Frame(notebook)
+    notebook.add(edit_set_frame, text='Edit Set')
+
+    # Create Canvas and Scrollbar in the Edit Set frame
+    canvas = tk.Canvas(edit_set_frame)
+    scrollbar = ttk.Scrollbar(edit_set_frame, orient="vertical", command=canvas.yview)
+    scrollable_frame = ttk.Frame(canvas)
+
+    scrollable_frame.bind(
+        "<Configure>",
+        lambda e: canvas.configure(
+            scrollregion=canvas.bbox("all")
+        )
+    )
+
+    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+    canvas.configure(yscrollcommand=scrollbar.set)
+
+    scrollbar.pack(side="right", fill="y")
+    canvas.pack(side="left", fill="both", expand=True)
+
+    # Center the content using a nested frame
+    center_frame = ttk.Frame(scrollable_frame)
+    center_frame.grid(row=0, column=0, padx=100, pady=10)
+
+    # Combobox widget for selecting set to edit
+    sets_combobox_edit = ttk.Combobox(center_frame, state='readonly')
+    sets_combobox_edit.grid(row=0, column=0, columnspan=2, padx=5, pady=5)
+
+    # Button to select set for editing
+    select_button_edit = ttk.Button(center_frame, text='Select Set', command=select_set_for_edit)
+    select_button_edit.grid(row=1, column=0, columnspan=2, padx=5, pady=5)
+    ToolTip(select_button_edit, text="Select a set to edit.")
+
+    # Listbox to display flashcards
+    flashcards_listbox = tk.Listbox(center_frame)
+    flashcards_listbox.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky='ew')
+
+    # Button to delete selected word
+    ttk.Button(center_frame, text='Delete Word', command=delete_word).grid(row=3, column=0, columnspan=2, padx=5, pady=10)
+
+    # Entry widgets for adding new flashcards
+    ttk.Label(center_frame, text='Word(s): ').grid(row=4, column=0, padx=5, pady=5, sticky='e')
+    ttk.Entry(center_frame, textvariable=word_var_edit, width=30).grid(row=4, column=1, padx=5, pady=5)
+
+    ttk.Label(center_frame, text='Answer: ').grid(row=5, column=0, padx=5, pady=5, sticky='e')
+    ttk.Entry(center_frame, textvariable=definition_var_edit, width=30).grid(row=5, column=1, padx=5, pady=5)
+
+    # Button to add new word
+    ttk.Button(center_frame, text='Add Word', command=update_word).grid(row=6, column=1, padx=5, pady=5, sticky='w')
+
+    ttk.Label(center_frame, text='Image Path: ').grid(row=7, column=0, padx=5, pady=5, sticky='e')
+    image_path_entry_edit = ttk.Entry(center_frame, textvariable=image_path_var_edit, width=30)
+    image_path_entry_edit.grid(row=7, column=1, padx=5, pady=5)
+    ttk.Button(center_frame, text='Browse Image', command=lambda: browse_file(image_path_var_edit)).grid(row=8, column=1, padx=5, pady=5, sticky='w')
+
+    ttk.Label(center_frame, text='Video Path: ').grid(row=9, column=0, padx=5, pady=5, sticky='e')
+    video_path_entry_edit = ttk.Entry(center_frame, textvariable=video_path_var_edit, width=30)
+    video_path_entry_edit.grid(row=9, column=1, padx=5, pady=5)
+    ttk.Button(center_frame, text='Browse Video', command=lambda: browse_file(video_path_var_edit, video=True)).grid(row=10, column=1, padx=5, pady=5, sticky='w')
+
+    # Add widgets to update set name
+    ttk.Label(center_frame, text='New Set Name: ').grid(row=11, column=0, padx=5, pady=5, sticky='e')
+    ttk.Entry(center_frame, textvariable=new_set_name_var, width=30).grid(row=11, column=1, padx=5, pady=5)
+    ttk.Button(center_frame, text='Update Set Name', command=lambda: update_set_name(conn, get_sets(conn)[sets_combobox_edit.get()], new_set_name_var.get())).grid(row=12, column=1, padx=5, pady=5, sticky='w')
+
+    # Populate comboboxes with sets
+    populate_sets_combobox()
+    populate_sets_combobox_edit()
 
     # Learn mode tab
     flashcards_frame = ttk.Frame(notebook)
@@ -682,8 +807,6 @@ if __name__ == '__main__':
     image_label = ttk.Label(flashcards_frame)
     image_label.pack(pady=(5, 0), padx=5)  # Adjust the padding to reduce vertical space
 
-
-
     # Canvas to display video
     video_canvas = tk.Canvas(flashcards_frame, width=400, height=300)
     video_canvas.pack(padx=5, pady=10)
@@ -692,7 +815,7 @@ if __name__ == '__main__':
     character_label = ttk.Label(flashcards_frame)
     character_label.pack(pady=(0, 10))
 
-# Flip button
+    # Flip button
     flip_button = ttk.Button(flashcards_frame, text='Flip', command=flip_card)
     flip_button.pack(side='left', padx=5, pady=5)
     ToolTip(flip_button, text="Click to flip the card")
@@ -702,8 +825,6 @@ if __name__ == '__main__':
 
     # Previous button
     ttk.Button(flashcards_frame, text='Previous', command=prev_card).pack(side='right', padx=5, pady=5)
-
-    populate_sets_combobox()
 
     root.protocol("WM_DELETE_WINDOW", on_closing)
     root.mainloop()
