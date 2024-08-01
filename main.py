@@ -650,8 +650,17 @@ if __name__ == '__main__':
     ttk.Button(select_set_frame, text='Update Set Name', command=lambda: update_set_name(conn, get_sets(conn)[sets_combobox.get()], new_set_name_var.get())).pack(padx=5, pady=5)
 
     # Delete and add button
-    ttk.Button(select_set_frame, text='Select Set', command=select_set).pack(padx=5, pady=5)
+    select_button = ttk.Button(select_set_frame, text='Select Set', command=select_set)
+    select_button.pack(padx=5, pady=5)
+    ToolTip(select_button, text="Proceed to learning mode after selection to begin.")
     ttk.Button(select_set_frame, text='Delete Set', command=delete_selected_set).pack(padx=5, pady=5)
+
+    # Label for instructions
+    ttk.Label(select_set_frame, text=' Gesture control: ').pack(padx=5, pady=8)
+    ttk.Label(select_set_frame, text='1 finger to go previous').pack(padx=5, pady=5)
+    ttk.Label(select_set_frame, text='2 fingers to go next').pack(padx=5, pady=5)
+    ttk.Label(select_set_frame, text='3 fingers to flip').pack(padx=5, pady=5)
+    ttk.Label(select_set_frame, text='Press Q to turn it off').pack(padx=5,pady=5)
 
     # Learn mode tab
     flashcards_frame = ttk.Frame(notebook)
