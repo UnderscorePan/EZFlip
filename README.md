@@ -1,4 +1,4 @@
-# EZFlip Flashcard Application
+![image](https://github.com/user-attachments/assets/c96966a2-3621-48b4-943c-4a1843acee89)# EZFlip Flashcard Application
 
 EZFlip is a flashcard application designed to help users create, manage, and learn from custom flashcards. It supports text, images, and videos, and includes gesture control for hands-free operation.
 
@@ -129,4 +129,5 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 - FFMPEG for audio extraction
 - Pygame for audio playback
 - @Grimmlen_ for the Walfie Suisei
+- @Nick-de-Bruin for troubleshooting
 
