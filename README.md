@@ -44,8 +44,14 @@ EZFlip is a flashcard application designed to help users create, manage, and lea
 
 4. **Run the application:**
     ```bash
-    python ezflip.py
+    python main.py
     ```
+
+5. **Smoke-test:**
+   - In `Create Set`, add a set name plus one card (word + definition, optional media), click **Add Word** then **Save Set**.
+   - In `Select Set`, choose the set and click **Select Set**, then switch to `Learning Mode` to confirm flip/next/previous work.
+   - For video cards, verify playback and audio (FFmpeg must be on PATH).
+   - Gesture control requires a webcam; show 1/2/3 fingers to trigger previous/next/flip. Press `Q` to close the gesture window.
 
 ## Usage
 
@@ -112,6 +118,13 @@ The following libraries and modules are used in the application:
 - **Gesture Control:** Mediapipe integration for gesture-based navigation.
 - **Audio-Video Synchronization:** Extraction and playback of audio from video files.
 - **Scrollable Interface:** Canvas and scrollbar implementation to handle large sets of flashcards.
+- **Module Layout:** Shared helpers now live under `ezflip/` (`database.py`, `media.py`, `gesture.py`, `tooltips.py`) with `main.py` as the entry point.
+
+## Troubleshooting
+
+- **FFmpeg errors or no video/audio:** Install FFmpeg and ensure it is on your system PATH.
+- **Import errors:** Re-run dependency install (`pip install -r requirements.txt`) with the same Python you use to run `main.py`.
+- **Gesture window issues:** Confirm your webcam is available; press `Q` in the gesture window to close it.
 
 ## Contributing
 

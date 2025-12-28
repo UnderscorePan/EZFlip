@@ -1,2 +1,27 @@
 # created by virtualenv automatically
 ezflash.db
+
+# python artifacts
+__pycache__/
+*.pyc
+*.pyo
+
+# virtual environments
+.venv/
+venv/
+env/
+
+# tooling
+.vscode/
+.idea/
+.pytest_cache/
+.mypy_cache/
+
+# packaging / build
+build/
+dist/
+*.spec
+
+# logs and temp
+*.log
+*.tmp
